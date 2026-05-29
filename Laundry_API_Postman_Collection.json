@@ -1,0 +1,96 @@
+{
+  "info": {
+    "_postman_id": "e674b8e2-c0e8-467a-821b-f06b9b32e185",
+    "name": "Laundry App API",
+    "description": "Postman Collection for Laundry Application REST APIs (ОРИС семестровая)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Laundries",
+      "item": [
+        {
+          "name": "Get All Laundries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/laundries"
+          }
+        },
+        {
+          "name": "Search Laundries (@Query)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/laundries/search?q=Казань",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "laundries", "search"],
+              "query": [{"key": "q", "value": "Казань"}]
+            }
+          }
+        },
+        {
+          "name": "Busy Laundries (subselect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/laundries/busy"
+          }
+        },
+        {
+          "name": "Search By Criteria (CriteriaBuilder)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/laundries/criteria?name=Чистота&address=Баумана",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "laundries", "criteria"],
+              "query": [
+                {"key": "name", "value": "Чистота"},
+                {"key": "address", "value": "Баумана"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Get Reviews for Laundry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews?laundryId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews"],
+              "query": [{"key": "laundryId", "value": "1"}]
+            }
+          }
+        },
+        {
+          "name": "Add Review (login required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-Requested-With", "value": "XMLHttpRequest"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"laundryId\": 1,\n  \"rating\": 5,\n  \"comment\": \"Отличное место!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/reviews"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"}
+  ]
+}

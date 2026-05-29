@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Laundry Locator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #map { height: 500px; width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .navbar { margin-bottom: 20px; }
+        .leaflet-routing-container { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container">
+    <h1>Найди прачечную рядом</h1>
+    <p class="text-muted">Карта автоматически определит ваше местоположение. <br><strong>Неправильно определилось? Просто кликните в любое место на карте</strong>, чтобы установить свою точку отправления вручную.</p>
+    
+    <div id="map"></div>
+    <div id="route-info" class="alert alert-info mt-3" style="display: none;"></div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Поиск прачечных</h5>
+            <form th:action="@{/}" method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small">Название или адрес</label>
+                    <input type="text" name="q" class="form-control" th:value="${q}" placeholder="Казань, Чистота...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Адрес</label>
+                    <input type="text" name="address" class="form-control" th:value="${address}" placeholder="ул. Баумана">
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="busy" value="true" id="busyCheck" th:checked="${busy}">
+                        <label class="form-check-label small" for="busyCheck">Популярные</label>
+                    </div>
+                    <div class="form-check" sec:authorize="isAuthenticated()">
+                        <input class="form-check-input" type="checkbox" name="favoritesOnly" value="true" id="favCheck" th:checked="${favoritesOnly}">
+                        <label class="form-check-label small" for="favCheck">Только избранные</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Найти</button>
+                    <a th:href="@{/}" class="btn btn-outline-secondary w-100 mt-1">Сбросить</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="mt-4 mb-5 pb-4">
+        <h3>Список прачечных</h3>
+        <div th:if="${laundries.empty}" class="alert alert-warning">По вашему запросу ничего не найдено.</div>
+        <ul class="list-group">
+            <li class="list-group-item" th:each="laundry : ${laundries}">
+                <strong th:text="${laundry.name}">Name</strong> - <span th:text="${laundry.address}">Address</span> 
+                <span class="badge bg-info text-dark ms-2" th:text="${laundry.operatingHours}">Hours</span>
+                <a th:href="@{/laundry/{id}(id=${laundry.id})}" class="btn btn-sm btn-primary float-end">Подробнее</a>
+                <button class="btn btn-sm btn-outline-secondary float-end me-2" th:onclick="'buildRoute(' + ${laundry.latitude} + ', ' + ${laundry.longitude} + ')'">Маршрут</button>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    var realisticLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}');
+
+    var map = L.map('map', {
+        attributionControl: false,
+        layers: [realisticLayer]
+    }).setView([55.796391, 49.108891], 12);
+
+    var baseMaps = {
+        "Спутник": realisticLayer,
+        "Стандартная карта": osmLayer
+    };
+    L.control.layers(baseMaps).addTo(map);
+
+    var userLocation = [55.796391, 49.108891];
+    
+    var redIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+    
+    var userMarker = L.marker(userLocation, {icon: redIcon}).addTo(map).bindPopup('Ваше местоположение');
+
+    map.locate({setView: false, maxZoom: 16});
+    map.on('locationfound', function(e) {
+        userLocation = [e.latlng.lat, e.latlng.lng];
+        userMarker.setLatLng(userLocation);
+        map.setView(userLocation, 13);
+    });
+    map.on('locationerror', function(e) {
+        console.log("Браузерная геолокация недоступна. Пробуем определить по IP...");
+        fetch('https://ipapi.co/json/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.latitude && data.longitude) {
+                    userLocation = [data.latitude, data.longitude];
+                    userMarker.setLatLng(userLocation);
+                    userMarker.getPopup().setContent('Ваше примерное местоположение (по IP). <br>Кликните в другое место, чтобы изменить.');
+                    map.setView(userLocation, 12);
+                    console.log("Определено по IP: ", data.city);
+                }
+            })
+            .catch(err => {
+                console.log("Ошибка IP-геолокации, оставляем метку в центре Казани: ", err);
+            });
+    });
+
+    map.on('click', function(e) {
+        userLocation = [e.latlng.lat, e.latlng.lng];
+        userMarker.setLatLng(userLocation);
+        userMarker.getPopup().setContent('Ваша стартовая точка (выбрана вручную)');
+        userMarker.openPopup();
+        
+        if (routingControl && activeDestination) {
+            buildRoute(activeDestination[0], activeDestination[1]);
+        }
+    });
+
+    var laundries = /*[[${laundryMapPoints}]]*/ [];
+    laundries.forEach(function(l) {
+        if (l.latitude && l.longitude) {
+            var popupContent = '<b>' + l.name + '</b><br>' + l.address + 
+                               '<br><small>Время работы: ' + l.operatingHours + '</small>' +
+                               '<br><br>' +
+                               '<div class="d-grid gap-2">' +
+                               '<a href="/laundry/' + l.id + '" class="btn btn-sm btn-success text-white">Перейти к прачечной</a>' +
+                               '<button class="btn btn-sm btn-primary" onclick="buildRoute(' + l.latitude + ', ' + l.longitude + '); map.closePopup();">Построить маршрут</button>' +
+                               '</div>';
+            L.marker([l.latitude, l.longitude]).addTo(map).bindPopup(popupContent);
+        }
+    });
+
+    var routingControl = null;
+    var activeDestination = null;
+
+    window.buildRoute = function(lat, lon) {
+        activeDestination = [lat, lon];
+        
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+        
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(userLocation[0], userLocation[1]),
+                L.latLng(lat, lon)
+            ],
+            routeWhileDragging: false,
+            addWaypoints: false,
+            show: false,
+            createMarker: function() { return null; }
+        }).addTo(map);
+
+        routingControl.on('routesfound', function(e) {
+            var routes = e.routes;
+            var summary = routes[0].summary;
+            var distance = (summary.totalDistance / 1000).toFixed(1) + ' км';
+            var time = Math.round(summary.totalTime / 60) + ' мин';
+            
+            var infoDiv = document.getElementById('route-info');
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = '<strong>Маршрут построен:</strong> Расстояние: ' + distance + ', примерное время в пути: ' + time;
+        });
+    };
+</script>
+</body>
+</html>

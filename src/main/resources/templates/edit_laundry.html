@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Редактировать прачечную</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-light">
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white font-weight-bold">
+                    Редактировать прачечную: <span th:text="${laundry.name}">Name</span>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/owner/laundry/{id}/edit(id=${laundry.id})}" method="post" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Название</label>
+                            <input type="text" class="form-control" name="name" th:value="${laundry.name}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Точный адрес</label>
+                            <input type="text" class="form-control" name="address" th:value="${laundry.address}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Местоположение на карте (кликните, чтобы изменить)</label>
+                            <div id="edit-laundry-map" style="height: 400px;" class="rounded border mb-2"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Широта (Latitude)</label>
+                            <input type="number" step="0.000001" class="form-control" name="latitude" id="latInput" th:value="${laundry.latitude}" required readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Долгота (Longitude)</label>
+                            <input type="number" step="0.000001" class="form-control" name="longitude" id="lngInput" th:value="${laundry.longitude}" required readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">График работы</label>
+                            <input type="text" class="form-control" name="operatingHours" th:value="${laundry.operatingHours}" required>
+                        </div>
+                        <div class="col-12 text-end">
+                            <a href="/owner/dashboard" class="btn btn-outline-secondary me-2">Отмена</a>
+                            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var lat = [[${laundry.latitude}]];
+    var lng = [[${laundry.longitude}]];
+
+    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    var realisticLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}');
+
+    var map = L.map('edit-laundry-map', { 
+        attributionControl: false,
+        layers: [realisticLayer]
+    }).setView([lat, lng], 15);
+
+    var baseMaps = {
+        "Спутник": realisticLayer,
+        "Стандартная карта": osmLayer
+    };
+    L.control.layers(baseMaps).addTo(map);
+
+    var marker = L.marker([lat, lng]).addTo(map);
+
+    map.on('click', function(e) {
+        var newLat = e.latlng.lat.toFixed(6);
+        var newLng = e.latlng.lng.toFixed(6);
+
+        document.getElementById('latInput').value = newLat;
+        document.getElementById('lngInput').value = newLng;
+
+        marker.setLatLng(e.latlng);
+    });
+});
+</script>
+</body>
+</html>

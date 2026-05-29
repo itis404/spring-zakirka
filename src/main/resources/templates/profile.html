@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Мой профиль</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .profile-page { min-height: calc(100vh - 80px); padding-bottom: 3rem; }
+        .profile-sidebar .card-body { padding: 1.5rem; }
+        .profile-sidebar .card-header { padding: 0.85rem 1.25rem; }
+        .booking-item .card-body { padding: 1.35rem 1.5rem; min-height: 120px; }
+        .favorites-list { max-height: 220px; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-light profile-page">
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Мои бронирования</h2>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card mb-3 shadow-sm booking-item" th:each="booking : ${bookings}">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1 d-inline-block me-2" th:text="${booking.machine.name}">Machine</h5>
+                                <span class="badge bg-secondary mb-1" th:text="${(booking.pricePaid != null ? booking.pricePaid : booking.machine.price) + ' ₽'}">Price</span>
+                                <p class="mb-1 text-muted small" th:text="${booking.machine.laundry.name} + ' - ' + ${booking.machine.laundry.address}"></p>
+                                <span class="badge bg-primary" th:text="${#temporals.format(booking.startTime, 'dd.MM HH:mm')} + ' — ' + ${#temporals.format(booking.endTime, 'HH:mm')}">Time</span>
+                                <span class="badge bg-success ms-2" th:text="${booking.status}">Status</span>
+                            </div>
+                            <form th:action="@{/booking/{id}/cancel(id=${booking.id})}" method="post">
+                                <button class="btn btn-outline-danger btn-sm" type="submit">Отменить бронь</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div th:if="${bookings.empty}" class="alert alert-secondary">У вас пока нет активных бронирований.</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 profile-sidebar">
+            <h2>Мой профиль</h2>
+            
+            <div th:if="${param.updated}" class="alert alert-success mt-4 py-2">
+                Данные профиля успешно обновлены!
+            </div>
+            
+            <div th:if="${param.toppedup}" class="alert alert-success mt-4 py-2">
+                Баланс успешно пополнен!
+            </div>
+
+            <div th:if="${param.cancelled}" class="alert alert-success mt-4 py-2">
+                Бронь отменена, деньги возвращены на баланс.
+            </div>
+
+            <div th:if="${param.cancelError}" class="alert alert-danger mt-4 py-2">
+                Не удалось отменить бронь. Обновите страницу и попробуйте снова.
+            </div>
+
+            <div class="card shadow-sm mt-4 mb-4">
+                <div class="card-header bg-success text-white">Мой Кошелек</div>
+                <div class="card-body text-center">
+                    <h3 class="mb-3" th:text="${(user.balance != null ? user.balance : 0) + ' ₽'}">0 ₽</h3>
+                    <form th:action="@{/profile/topup}" method="post" class="row g-2">
+                        <div class="col-8">
+                            <input type="number" name="amount" class="form-control" placeholder="Сумма (₽)" min="10" step="10" required>
+                        </div>
+                        <div class="col-4">
+                            <button type="submit" class="btn btn-success w-100">Пополнить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4 mb-4">
+                <div class="card-header bg-warning text-dark">Избранные прачечные</div>
+                <div class="card-body favorites-list">
+                    <ul class="list-group list-group-flush" th:if="${!favoriteLaundries.empty}">
+                        <li class="list-group-item d-flex justify-content-between align-items-center" th:each="fav : ${favoriteLaundries}">
+                            <span th:text="${fav.name} + ' — ' + ${fav.address}">Laundry</span>
+                            <a th:href="@{/laundry/{id}(id=${fav.id})}" class="btn btn-sm btn-outline-primary">Открыть</a>
+                        </li>
+                    </ul>
+                    <p th:if="${favoriteLaundries.empty}" class="text-muted mb-0 small">Добавляйте прачечные в избранное на странице деталей.</p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4 mb-4">
+                <div class="card-header bg-dark text-white">Личные данные</div>
+                <div class="card-body">
+                    <form th:action="@{/profile/edit}" method="post">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small mb-0">Email (Логин)</label>
+                            <input type="text" class="form-control" th:value="${user.email}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small mb-0">Роль</label>
+                            <input type="text" class="form-control" th:value="${user.role}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-0">Имя</label>
+                            <input type="text" class="form-control" name="firstName" th:value="${user.firstName}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-0">Фамилия</label>
+                            <input type="text" class="form-control" name="lastName" th:value="${user.lastName}" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Сохранить изменения</button>
+                    </form>
+                </div>
+            </div>
+
+            <form th:action="@{/profile/delete}" method="post" class="mt-4" onsubmit="return confirm('Вы уверены, что хотите удалить аккаунт навсегда? Это действие нельзя отменить.');">
+                <button type="submit" class="btn btn-danger w-100">Удалить аккаунт</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

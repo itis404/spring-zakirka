@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Бронирование</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Оформление бронирования</h4>
+                </div>
+                <div class="card-body">
+                    <div th:if="${error}" class="alert alert-danger" th:text="${error}">Error message</div>
+                    <div th:if="${param.error != null and #strings.equals(param.error, 'busy')}" class="alert alert-danger">Машина сейчас занята. Выберите другую.</div>
+                    <div th:if="${param.error != null and #strings.equals(param.error, 'insufficient_funds')}" class="alert alert-danger">Недостаточно средств на балансе. Пожалуйста, пополните счет.</div>
+
+                    <h5 class="card-title" th:text="${machine.name}">Machine Name</h5>
+                    <p class="card-text text-muted" th:text="${machine.laundry.name} + ' - ' + ${machine.laundry.address}">Laundry Info</p>
+                    
+                    <hr>
+                    
+                    <div class="mb-3 d-flex justify-content-between">
+                        <span>Тип оборудования:</span>
+                        <strong th:text="${machine.type.name() == 'WASHER' ? 'Стиральная машина' : 'Сушильная машина'}">Type</strong>
+                    </div>
+                    <div class="mb-4 d-flex justify-content-between">
+                        <span>Стоимость (за цикл):</span>
+                        <strong class="text-success" th:text="${machine.price + ' ₽'}">Price</strong>
+                    </div>
+
+                    <form th:action="@{/booking/new}" method="post" th:if="${!machine.busy}">
+                        <input type="hidden" name="machineId" th:value="${machine.id}">
+                        
+                        <div class="mb-3">
+                            <label for="duration" class="form-label">Длительность (мин):</label>
+                            <select class="form-select" id="duration" name="durationMinutes" required>
+                                <option value="30">30 минут - Быстрая</option>
+                                <option value="45">45 минут - Стандартная</option>
+                                <option value="60">60 минут - Интенсивная</option>
+                                <option value="90">90 минут - Полный цикл</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100">Подтвердить и оплатить</button>
+                    </form>
+                    
+                    <a th:href="@{/laundry/{id}(id=${machine.laundry.id})}" class="btn btn-outline-secondary w-100 mt-2">Вернуться назад</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
